@@ -3,136 +3,146 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Download } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Menu, X } from 'lucide-react'
 
 const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/about', label: 'About' },
-  { href: '/projects', label: 'Projects' },
-  { href: '/media', label: 'Media' },
-  { href: '/contact', label: 'Contact' },
+  { label: 'Home',     href: '/' },
+  { label: 'About',    href: '/about' },
+  { label: 'Projects', href: '/projects' },
+  { label: 'Media',    href: '/media' },
+  { label: 'Contact',  href: '/contact' },
 ]
 
-export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+interface NavbarProps {
+  brandName?: string
+}
+
+export default function Navbar({ brandName = 'Willis Otis' }: NavbarProps) {
   const pathname = usePathname()
+  const [openForPath, setOpenForPath] = useState<string | null>(null)
+  const menuOpen = openForPath === pathname
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenForPath(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
-
-  useEffect(() => {
-    setMobileOpen(false)
-  }, [pathname])
 
   return (
     <header
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-        scrolled
-          ? 'glass border-b border-blue-900/20 shadow-lg shadow-black/20'
-          : 'bg-transparent'
-      )}
+      className="sticky top-0 z-50 w-full bg-[#091229]/95 backdrop-blur-md border-b border-white/[0.07]"
+      style={{ height: 'var(--navbar-height)' }}
     >
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-lg bg-[#2563eb] flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-blue-600/30 group-hover:shadow-blue-600/50 transition-all duration-300 group-hover:scale-105">
-            YN
-          </div>
-          <span className="font-semibold text-white/90 tracking-tight hidden sm:block group-hover:text-white transition-colors">
-            YourName<span className="text-[#2563eb]">.dev</span>
+      <nav
+        aria-label="Primary Navigation"
+        className="page-container h-full flex items-center justify-between gap-6"
+      >
+        {/* Brand Monogram + Name */}
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 shrink-0 group"
+          aria-label={`${brandName} homepage`}
+        >
+          <span className="inline-flex items-center justify-center px-2 py-1 rounded-md bg-[#2563eb] text-white font-mono text-xs font-bold tracking-tight shadow-sm shadow-blue-600/30 group-hover:bg-[#1d4ed8] transition-colors">
+            &lt;/&gt;
+          </span>
+          <span className="text-[15px] font-bold text-white tracking-tight">
+            {brandName}
           </span>
         </Link>
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                'relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200',
-                pathname === link.href
-                  ? 'text-white'
-                  : 'text-[#9ca3af] hover:text-white hover:bg-white/5'
-              )}
-            >
-              {pathname === link.href && (
-                <motion.span
-                  layoutId="nav-indicator"
-                  className="absolute inset-0 bg-white/8 rounded-lg"
-                  transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-                />
-              )}
-              <span className="relative">{link.label}</span>
-            </Link>
-          ))}
+        {/* Desktop Links — single horizontal axis */}
+        <div className="hidden md:flex items-center gap-1 lg:gap-2">
+          {navLinks.map(({ label, href }) => {
+            const active = href === '/'
+              ? pathname === '/'
+              : pathname === href || pathname.startsWith(`${href}/`)
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  active
+                    ? 'text-white bg-white/[0.08]'
+                    : 'text-slate-300 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                {label}
+              </Link>
+            )
+          })}
         </div>
 
-        {/* CTA Buttons */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Right Primary Action + Mobile Trigger */}
+        <div className="flex items-center gap-3 shrink-0">
           <Link
             href="/contact"
-            className="px-5 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:scale-105 active:scale-95"
+            className="hidden sm:inline-flex items-center justify-center px-4 py-2 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-semibold shadow-sm shadow-blue-600/25 transition-colors"
           >
             Hire Me
           </Link>
-        </div>
 
-        {/* Mobile menu button */}
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-          aria-label="Toggle menu"
-          aria-expanded={mobileOpen}
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+          <button
+            type="button"
+            onClick={() => setOpenForPath((prev) => (prev === pathname ? null : pathname))}
+            className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl text-slate-300 hover:text-white hover:bg-white/[0.07] border border-white/[0.08] transition-colors"
+            aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-nav-menu"
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </nav>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden border-t border-blue-900/20 glass"
-          >
-            <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1">
-              {navLinks.map((link) => (
+      {/* Mobile Dropdown Drawer */}
+      {menuOpen && (
+        <div
+          id="mobile-nav-menu"
+          className="md:hidden absolute top-[72px] inset-x-0 bg-[#0d1322] border-b border-white/[0.1] shadow-2xl"
+        >
+          <div className="page-container py-4 flex flex-col gap-1.5">
+            {navLinks.map(({ label, href }) => {
+              const active = href === '/'
+                ? pathname === '/'
+                : pathname === href || pathname.startsWith(`${href}/`)
+              return (
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    'px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                    pathname === link.href
-                      ? 'bg-white/8 text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  )}
+                  key={href}
+                  href={href}
+                  onClick={() => setOpenForPath(null)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    active
+                      ? 'bg-blue-600/15 text-white border border-blue-500/25'
+                      : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
+                  }`}
                 >
-                  {link.label}
+                  {label}
                 </Link>
-              ))}
-              <div className="mt-3 pt-3 border-t border-blue-900/20 flex flex-col gap-2">
-                <Link
-                  href="/contact"
-                  className="px-4 py-3 bg-[#2563eb] text-white text-sm font-semibold rounded-lg text-center"
-                >
-                  Hire Me
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              )
+            })}
+            <div className="h-px bg-white/[0.08] my-2" />
+            <Link
+              href="/contact"
+              onClick={() => setOpenForPath(null)}
+              className="cta-button-primary w-full text-sm py-2.5"
+            >
+              Hire Me
+            </Link>
+            <Link
+              href="/admin"
+              onClick={() => setOpenForPath(null)}
+              className="px-3.5 py-2 text-center text-xs font-medium text-blue-400 hover:text-blue-300"
+            >
+              Admin Dashboard &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

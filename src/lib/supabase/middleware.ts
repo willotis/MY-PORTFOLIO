@@ -1,7 +1,21 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isSupabaseConfigured } from './config'
 
 export async function updateSession(request: NextRequest) {
+  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
+  const isLoginRoute = request.nextUrl.pathname.startsWith('/admin/login')
+
+  // Skip network call to placeholder Supabase URL so public pages load instantly
+  if (!isSupabaseConfigured()) {
+    if (isAdminRoute && !isLoginRoute) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/login'
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -28,16 +42,14 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Protect /admin routes
-  if (request.nextUrl.pathname.startsWith('/admin') &&
-      !request.nextUrl.pathname.startsWith('/admin/login') &&
-      !user) {
+  if (isAdminRoute && !isLoginRoute && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/admin/login'
     return NextResponse.redirect(url)
   }
 
   // Redirect logged-in users away from /admin/login
-  if (request.nextUrl.pathname === '/admin/login' && user) {
+  if (isLoginRoute && user) {
     const url = request.nextUrl.clone()
     url.pathname = '/admin'
     return NextResponse.redirect(url)

@@ -1,69 +1,80 @@
-import Image from "next/image";
+import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/layout/Footer'
+import HeroSection from '@/components/home/HeroSection'
+import FeaturedProjects from '@/components/home/FeaturedProjects'
+import SkillsPreview from '@/components/home/SkillsPreview'
+import ContactCTA from '@/components/home/ContactCTA'
+import { createClient } from '@/lib/supabase/server'
+import { isSupabaseConfigured } from '@/lib/supabase/config'
+import { DEFAULT_PROFILE, DEFAULT_PROJECTS } from '@/lib/constants'
 
-export default function Home() {
+export default async function HomePage() {
+  let profile = DEFAULT_PROFILE
+  let projects = DEFAULT_PROJECTS
+  let skills: { id: string; category: string; name: string }[] = []
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createClient()
+      const [profileRes, projectsRes, skillsRes] = await Promise.all([
+        supabase.from('profiles').select('*').single(),
+        supabase
+          .from('projects')
+          .select('*')
+          .eq('featured', true)
+          .eq('published', true)
+          .order('sort_order'),
+        supabase.from('skills').select('*').order('sort_order'),
+      ])
+      if (profileRes.data) profile = profileRes.data
+      if (projectsRes.data?.length) projects = projectsRes.data
+      if (skillsRes.data?.length) skills = skillsRes.data
+    } catch {
+      // Graceful fallback
+    }
+  }
+
+  const isAvailable = Boolean(
+    profile?.availability_employment ||
+      profile?.availability_freelance ||
+      profile?.availability_collaboration
+  )
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="min-h-screen bg-[#0d1017] text-white flex flex-col">
+      <Navbar />
+      <main className="flex-1">
+        <HeroSection
+          portraitUrl={profile?.avatar_url || '/images/portrait.png'}
+          name={profile?.name || 'Willis Otis'}
+          title={profile?.title || 'Software Developer & Tech Professional'}
+          headline={profile?.tagline || 'Building technology that solves real problems.'}
+          tagline="Software Development · Data Analysis · AI Automation"
+          bio={
+            profile?.bio ||
+            'I design and build dependable digital products — spanning full-stack web engineering, data analysis, and practical AI workflow automation.'
+          }
+          cvVisible={profile?.cv_visible !== false}
+          available={isAvailable}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        <FeaturedProjects projects={projects} />
+        <SkillsPreview skills={skills} />
+        <ContactCTA
+          email={profile?.email || 'hello@willisotis.dev'}
+          availability={{
+            employment: profile?.availability_employment ?? true,
+            freelance: profile?.availability_freelance ?? true,
+            collaboration: profile?.availability_collaboration ?? true,
+          }}
+        />
       </main>
+      <Footer
+        name={profile?.name || 'Willis Otis'}
+        email={profile?.email || 'hello@willisotis.dev'}
+        github={profile?.github_url || 'https://github.com'}
+        linkedin={profile?.linkedin_url || 'https://linkedin.com'}
+        twitter={profile?.twitter_url || 'https://twitter.com'}
+      />
     </div>
-  );
+  )
 }
