@@ -15,11 +15,40 @@ export default function AdminProfilePage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.from('profiles').select('*').single().then(({ data }) => {
+    supabase.from('profiles').select('*').limit(1).maybeSingle().then(({ data }) => {
       if (data) setProfile(data)
       setLoading(false)
     })
   }, [supabase])
+
+  const persistProfile = async (nextProfile: Partial<Profile>) => {
+    const { id, ...fields } = nextProfile
+    const payload = {
+      ...fields,
+      name: fields.name?.trim() || 'Willis Otis',
+      updated_at: new Date().toISOString(),
+    }
+
+    if (id) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw error
+      if (data) setProfile(data)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert(payload)
+      .select()
+      .single()
+    if (error) throw error
+    if (data) setProfile(data)
+  }
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -41,10 +70,13 @@ export default function AdminProfilePage() {
         .upload(filename, file, { upsert: true })
       if (uploadError) throw uploadError
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filename)
-      setProfile((p) => ({ ...p, avatar_url: publicUrl }))
-      toast.success('Profile photo uploaded!')
-    } catch {
-      toast.error('Upload failed. Ensure the "avatars" storage bucket exists in Supabase.')
+      const updated = { ...profile, avatar_url: publicUrl }
+      setProfile(updated)
+      await persistProfile(updated)
+      toast.success('Profile photo uploaded and saved!')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Upload failed. Ensure the "avatars" storage bucket exists in Supabase.'
+      toast.error(msg)
     } finally {
       setUploading(false)
     }
@@ -53,14 +85,11 @@ export default function AdminProfilePage() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ ...profile, updated_at: new Date().toISOString() })
-        .eq('id', profile.id)
-      if (error) throw error
+      await persistProfile(profile)
       toast.success('Profile updated successfully!')
-    } catch {
-      toast.error('Failed to save profile changes')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save profile changes'
+      toast.error(msg)
     } finally {
       setSaving(false)
     }
