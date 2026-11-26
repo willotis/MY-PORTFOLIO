@@ -22,32 +22,20 @@ export default function AdminProfilePage() {
   }, [supabase])
 
   const persistProfile = async (nextProfile: Partial<Profile>) => {
-    const { id, ...fields } = nextProfile
     const payload = {
-      ...fields,
-      name: fields.name?.trim() || 'Willis Otis',
+      ...nextProfile,
+      name: nextProfile.name?.trim() || 'Willis Otis',
       updated_at: new Date().toISOString(),
     }
 
-    if (id) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(payload)
-        .eq('id', id)
-        .select()
-        .single()
-      if (error) throw error
-      if (data) setProfile(data)
-      return
-    }
+    const { error } = nextProfile.id
+      ? await supabase.from('profiles').update(payload).eq('id', nextProfile.id)
+      : await supabase.from('profiles').upsert(payload)
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert(payload)
-      .select()
-      .single()
-    if (error) throw error
-    if (data) setProfile(data)
+    if (error) {
+      // Surface the real Supabase error so we can diagnose it
+      throw new Error(error.message || error.code || JSON.stringify(error))
+    }
   }
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,15 +56,14 @@ export default function AdminProfilePage() {
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filename, file, { upsert: true })
-      if (uploadError) throw uploadError
+      if (uploadError) throw new Error(uploadError.message)
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filename)
       const updated = { ...profile, avatar_url: publicUrl }
-      setProfile(updated)
       await persistProfile(updated)
+      setProfile(updated)
       toast.success('Profile photo uploaded and saved!')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Upload failed. Ensure the "avatars" storage bucket exists in Supabase.'
-      toast.error(msg)
+      toast.error(err instanceof Error ? err.message : 'Upload failed — check the "avatars" storage bucket and RLS policies in Supabase.')
     } finally {
       setUploading(false)
     }
@@ -88,8 +75,7 @@ export default function AdminProfilePage() {
       await persistProfile(profile)
       toast.success('Profile updated successfully!')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to save profile changes'
-      toast.error(msg)
+      toast.error(err instanceof Error ? err.message : 'Save failed — check Supabase RLS policies.')
     } finally {
       setSaving(false)
     }
