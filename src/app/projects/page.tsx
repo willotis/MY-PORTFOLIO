@@ -6,6 +6,9 @@ import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { DEFAULT_PROJECTS, DEFAULT_PROFILE } from '@/lib/constants'
 import type { Metadata } from 'next'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export const metadata: Metadata = {
   title: 'Projects',
   description: 'Explore my software engineering, digital safety, and appointment booking projects.',

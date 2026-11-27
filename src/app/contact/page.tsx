@@ -6,6 +6,9 @@ import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { DEFAULT_PROFILE } from '@/lib/constants'
 import { Mail, Phone, MapPin, Briefcase, Zap, Users, MessageSquare } from 'lucide-react'
 import { GithubIcon, LinkedinIcon, TwitterIcon, WhatsAppIcon } from '@/components/icons/BrandIcons'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {

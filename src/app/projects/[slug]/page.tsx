@@ -6,6 +6,9 @@ import { DEFAULT_PROJECTS, DEFAULT_PROFILE } from '@/lib/constants'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { GithubIcon } from '@/components/icons/BrandIcons'
 import type { Metadata } from 'next'

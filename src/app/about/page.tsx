@@ -7,6 +7,9 @@ import { Briefcase, GraduationCap, Award, Code2, ArrowUpRight } from 'lucide-rea
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export const metadata: Metadata = {
   title: 'About',
   description: 'Learn about my technical background, engineering methodology, and professional experience.',

@@ -8,6 +8,10 @@ import { createClient } from '@/lib/supabase/server'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { DEFAULT_PROFILE, DEFAULT_PROJECTS } from '@/lib/constants'
 
+// Always fetch fresh data from Supabase — never serve a cached page
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function HomePage() {
   let profile = DEFAULT_PROFILE
   let projects = DEFAULT_PROJECTS
