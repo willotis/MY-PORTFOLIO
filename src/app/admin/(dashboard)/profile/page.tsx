@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { fetchLatestProfile } from '@/lib/supabase/profile'
 import { toast } from 'sonner'
 import { Save, Loader2, Upload, User } from 'lucide-react'
 import type { Profile } from '@/lib/types'
@@ -15,27 +16,42 @@ export default function AdminProfilePage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.from('profiles').select('*').limit(1).maybeSingle().then(({ data }) => {
-      if (data) setProfile(data)
-      setLoading(false)
+    let active = true
+    fetchLatestProfile(supabase).then(({ data }) => {
+      if (active) {
+        if (data) setProfile(data)
+        setLoading(false)
+      }
     })
+    return () => { active = false }
   }, [supabase])
 
-  const persistProfile = async (nextProfile: Partial<Profile>) => {
-    const payload = {
+  const persistProfile = async (nextProfile: Partial<Profile>): Promise<Partial<Profile>> => {
+    let targetId = nextProfile.id
+    if (!targetId) {
+      const { data: existing } = await fetchLatestProfile(supabase)
+      if (existing?.id) targetId = existing.id
+    }
+
+    const payload: Partial<Profile> = {
       ...nextProfile,
       name: nextProfile.name?.trim() || 'Willis Otis',
       updated_at: new Date().toISOString(),
     }
+    delete payload.id
 
-    const { error } = nextProfile.id
-      ? await supabase.from('profiles').update(payload).eq('id', nextProfile.id)
-      : await supabase.from('profiles').upsert(payload)
+    const query = targetId
+      ? supabase.from('profiles').update(payload).eq('id', targetId).select().maybeSingle<Profile>()
+      : supabase.from('profiles').insert(payload).select().maybeSingle<Profile>()
+
+    const { data, error } = await query
 
     if (error) {
       // Surface the real Supabase error so we can diagnose it
       throw new Error(error.message || error.code || JSON.stringify(error))
     }
+
+    return data ?? { ...nextProfile, ...payload, ...(targetId ? { id: targetId } : {}) }
   }
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,20 +75,22 @@ export default function AdminProfilePage() {
       if (uploadError) throw new Error(uploadError.message)
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filename)
       const updated = { ...profile, avatar_url: publicUrl }
-      await persistProfile(updated)
-      setProfile(updated)
+      const saved = await persistProfile(updated)
+      setProfile(saved)
       toast.success('Profile photo uploaded and saved!')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Upload failed — check the "avatars" storage bucket and RLS policies in Supabase.')
     } finally {
       setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
     }
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      await persistProfile(profile)
+      const saved = await persistProfile(profile)
+      setProfile(saved)
       toast.success('Profile updated successfully!')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Save failed — check Supabase RLS policies.')

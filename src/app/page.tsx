@@ -5,6 +5,7 @@ import FeaturedProjects from '@/components/home/FeaturedProjects'
 import SkillsPreview from '@/components/home/SkillsPreview'
 import ContactCTA from '@/components/home/ContactCTA'
 import { createClient } from '@/lib/supabase/server'
+import { fetchLatestProfile } from '@/lib/supabase/profile'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { DEFAULT_PROFILE, DEFAULT_PROJECTS } from '@/lib/constants'
 
@@ -21,7 +22,7 @@ export default async function HomePage() {
     try {
       const supabase = await createClient()
       const [profileRes, projectsRes, skillsRes] = await Promise.all([
-        supabase.from('profiles').select('*').single(),
+        fetchLatestProfile(supabase),
         supabase
           .from('projects')
           .select('*')

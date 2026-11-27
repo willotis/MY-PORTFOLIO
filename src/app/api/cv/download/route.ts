@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { fetchLatestProfile } from '@/lib/supabase/profile'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { readFile } from 'fs/promises'
 import path from 'path'
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     if (isSupabaseConfigured()) {
       const supabase = await createClient()
-      const { data: profile } = await supabase.from('profiles').select('cv_url, cv_visible').single()
+      const { data: profile } = await fetchLatestProfile(supabase)
 
       if (profile && !profile.cv_visible) {
         return NextResponse.json({ error: 'CV is currently private' }, { status: 404 })

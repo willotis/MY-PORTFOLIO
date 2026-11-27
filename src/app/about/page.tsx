@@ -1,6 +1,7 @@
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { createClient } from '@/lib/supabase/server'
+import { fetchLatestProfile } from '@/lib/supabase/profile'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { DEFAULT_PROFILE } from '@/lib/constants'
 import { Briefcase, GraduationCap, Award, Code2, ArrowUpRight } from 'lucide-react'
@@ -73,7 +74,7 @@ export default async function AboutPage() {
     try {
       const supabase = await createClient()
       const [pRes, sRes, expRes, eduRes, certRes] = await Promise.all([
-        supabase.from('profiles').select('*').single(),
+        fetchLatestProfile(supabase),
         supabase.from('skills').select('*').order('category').order('sort_order'),
         supabase.from('experience').select('*').order('sort_order'),
         supabase.from('education').select('*').order('sort_order'),

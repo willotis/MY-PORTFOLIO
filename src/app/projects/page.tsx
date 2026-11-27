@@ -2,6 +2,7 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import ProjectsGallery from '@/components/projects/ProjectsGallery'
 import { createClient } from '@/lib/supabase/server'
+import { fetchLatestProfile } from '@/lib/supabase/profile'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { DEFAULT_PROJECTS, DEFAULT_PROFILE } from '@/lib/constants'
 import type { Metadata } from 'next'
@@ -22,7 +23,7 @@ export default async function ProjectsPage() {
     try {
       const supabase = await createClient()
       const [pRes, projRes] = await Promise.all([
-        supabase.from('profiles').select('*').single(),
+        fetchLatestProfile(supabase),
         supabase.from('projects').select('*').eq('published', true).order('sort_order'),
       ])
       if (pRes.data) profile = pRes.data

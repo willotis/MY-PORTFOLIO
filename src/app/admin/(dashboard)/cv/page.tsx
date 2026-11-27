@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { fetchLatestProfile } from '@/lib/supabase/profile'
 import { toast } from 'sonner'
 import { Upload, Download, Eye, EyeOff, FileText, Loader2, ExternalLink } from 'lucide-react'
 
@@ -16,15 +17,29 @@ export default function AdminCVPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.from('profiles').select('id, cv_url, cv_visible').single().then(({ data }) => {
-      if (data) {
-        setCvUrl(data.cv_url ?? '')
-        setCvVisible(data.cv_visible ?? true)
-        setProfileId(data.id)
+    let active = true
+    fetchLatestProfile(supabase).then(({ data }) => {
+      if (active) {
+        if (data) {
+          setCvUrl(data.cv_url ?? '')
+          setCvVisible(data.cv_visible ?? true)
+          setProfileId(data.id)
+        }
+        setLoading(false)
       }
-      setLoading(false)
     })
+    return () => { active = false }
   }, [supabase])
+
+  const resolveProfileId = async () => {
+    if (profileId) return profileId
+    const { data } = await fetchLatestProfile(supabase)
+    if (data?.id) {
+      setProfileId(data.id)
+      return data.id
+    }
+    return ''
+  }
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -39,16 +54,18 @@ export default function AdminCVPage() {
     }
     setUploading(true)
     try {
+      const targetId = await resolveProfileId()
+      if (!targetId) throw new Error('No profile record found in Supabase.')
       const filename = `cv-${Date.now()}.pdf`
       const { error: uploadError } = await supabase.storage.from('cv').upload(filename, file, { upsert: true })
       if (uploadError) throw uploadError
       const { data: { publicUrl } } = supabase.storage.from('cv').getPublicUrl(filename)
-      const { error: dbError } = await supabase.from('profiles').update({ cv_url: publicUrl }).eq('id', profileId)
+      const { error: dbError } = await supabase.from('profiles').update({ cv_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', targetId)
       if (dbError) throw dbError
       setCvUrl(publicUrl)
       toast.success('CV uploaded successfully!')
-    } catch {
-      toast.error('Upload failed. Ensure the "cv" storage bucket exists in Supabase.')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed. Ensure the "cv" storage bucket exists in Supabase.')
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -57,8 +74,14 @@ export default function AdminCVPage() {
 
   const handleVisibilityToggle = async () => {
     setSaving(true)
+    const targetId = await resolveProfileId()
+    if (!targetId) {
+      toast.error('No profile record found in Supabase.')
+      setSaving(false)
+      return
+    }
     const newVal = !cvVisible
-    const { error } = await supabase.from('profiles').update({ cv_visible: newVal }).eq('id', profileId)
+    const { error } = await supabase.from('profiles').update({ cv_visible: newVal, updated_at: new Date().toISOString() }).eq('id', targetId)
     if (error) {
       toast.error('Update failed')
       setSaving(false)
@@ -166,14 +189,12 @@ export default function AdminCVPage() {
           <button
             onClick={handleVisibilityToggle}
             disabled={saving}
-            className={`w-12 h-7 rounded-full transition-colors relative ${
-              cvVisible ? 'bg-[#2563eb]' : 'bg-white/10'
-            } disabled:opacity-60`}
+            className={`w-12 h-7 rounded-full transition-colors relative ${cvVisible ? 'bg-[#2563eb]' : 'bg-white/10'
+              } disabled:opacity-60`}
           >
             <span
-              className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-                cvVisible ? 'translate-x-5' : ''
-              }`}
+              className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${cvVisible ? 'translate-x-5' : ''
+                }`}
             />
           </button>
         </div>

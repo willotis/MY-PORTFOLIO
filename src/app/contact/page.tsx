@@ -2,6 +2,7 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import ContactForm from '@/components/contact/ContactForm'
 import { createClient } from '@/lib/supabase/server'
+import { fetchLatestProfile } from '@/lib/supabase/profile'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { DEFAULT_PROFILE } from '@/lib/constants'
 import { Mail, Phone, MapPin, Briefcase, Zap, Users, MessageSquare } from 'lucide-react'
@@ -21,7 +22,7 @@ export default async function ContactPage() {
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient()
-      const { data } = await supabase.from('profiles').select('*').single()
+      const { data } = await fetchLatestProfile(supabase)
       if (data) profile = data
     } catch {}
   }

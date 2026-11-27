@@ -2,6 +2,7 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import MediaGallery from '@/components/media/MediaGallery'
 import { createClient } from '@/lib/supabase/server'
+import { fetchLatestProfile } from '@/lib/supabase/profile'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { DEFAULT_PROFILE } from '@/lib/constants'
 import type { Metadata } from 'next'
@@ -23,7 +24,7 @@ export default async function MediaPage() {
       const supabase = await createClient()
       const [mediaRes, profRes] = await Promise.all([
         supabase.from('media').select('*').order('created_at', { ascending: false }),
-        supabase.from('profiles').select('*').single(),
+        fetchLatestProfile(supabase),
       ])
       if (mediaRes.data) media = mediaRes.data
       if (profRes.data) profile = profRes.data

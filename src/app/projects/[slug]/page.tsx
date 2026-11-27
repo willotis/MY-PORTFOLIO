@@ -1,6 +1,7 @@
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { createClient } from '@/lib/supabase/server'
+import { fetchLatestProfile } from '@/lib/supabase/profile'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { DEFAULT_PROJECTS, DEFAULT_PROFILE } from '@/lib/constants'
 import { notFound } from 'next/navigation'
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient()
-      const { data } = await supabase.from('projects').select('title, description').eq('slug', slug).single()
+      const { data } = await supabase.from('projects').select('title, description').eq('slug', slug).maybeSingle()
       project = data
     } catch {}
   }
@@ -39,8 +40,8 @@ export default async function ProjectDetailPage({ params }: Props) {
     try {
       const supabase = await createClient()
       const [projRes, profRes] = await Promise.all([
-        supabase.from('projects').select('*').eq('slug', slug).eq('published', true).single(),
-        supabase.from('profiles').select('*').single(),
+        supabase.from('projects').select('*').eq('slug', slug).eq('published', true).maybeSingle(),
+        fetchLatestProfile(supabase),
       ])
       if (projRes.data) project = projRes.data
       if (profRes.data) profile = profRes.data
